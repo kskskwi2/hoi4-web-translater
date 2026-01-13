@@ -1,69 +1,23 @@
-# Paradox Localisation Manager (HOI4 Web Translater)
+# Paradox Localisation Manager (HOI4 웹 번역기)
 
-An automated tool to translate Hearts of Iron IV mods using a modern web interface. Designed for ease of use and extensibility.
+Hearts of Iron IV 모드를 최신 웹 인터페이스를 통해 자동으로 번역해주는 도구입니다. 사용 편의성과 확장성을 고려하여 설계되었습니다.
 
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![React](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB.svg)
 
-## Features
+> [Read in English (영어 설명서)](README_EN.md)
 
-*   **Auto-Detection**: Automatically finds your Steam Workshop mods.
-*   **One-Click Translation**: Generates a standalone translation mod with proper structure.
-*   **Smart Parsing**: Handles Paradox `.mod` and `.txt` files accurately.
-*   **Encoding Safe**: Preserves UTF-8 BOM encoding for HOI4 compatibility.
-*   **Web Interface**: A premium, responsive UI for managing your translations.
-*   **AI Powered**: Supports Google Translate, Ollama (Local LLM), OpenAI, Claude, Gemini.
+## 주요 기능
 
----
+*   **자동 감지**: 스팀 창작마당(Steam Workshop) 모드를 자동으로 찾아줍니다.
+*   **원클릭 번역**: 올바른 구조를 갖춘 독립적인 번역 모드를 생성합니다.
+*   **스마트 파싱**: Paradox의 `.mod` 및 `.txt` 파일을 정확하게 처리합니다.
+*   **인코딩 안전성**: HOI4 호환성을 위해 UTF-8 BOM 인코딩을 보존합니다.
+*   **웹 인터페이스**: 번역을 관리하기 위한 고급스럽고 반응형인 UI를 제공합니다.
+*   **AI 기반**: Google 번역, Ollama (로컬 LLM), OpenAI, Claude, Gemini를 지원합니다.
 
-## Installation & Usage (English)
-
-### Prerequisites
-*   Git
-*   Python 3.9+
-*   Node.js & npm (for building frontend)
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/yourusername/hoi4-web-translater.git
-cd hoi4-web-translater
-```
-
-### 2. Install Dependencies
-
-**Backend:**
-```bash
-pip install -r requirements.txt
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-### 3. Run the Application
-The `start.py` script initializes the backend server.
-```bash
-python start.py
-```
-*   The backend will start at `http://127.0.0.1:8080` (or similar port).
-*   If you are in development mode, run the frontend separately with `npm run dev` in the `frontend` folder.
-
-### 4. How to Use
-1.  Open the web interface in your browser.
-2.  The app will scan your Steam Workshop folder for HOI4 mods.
-3.  Select a mod to translate.
-4.  Choose your translation service (Google, Ollama, OpenAI, etc.).
-5.  Click "Start Translation".
-6.  Once finished, the translation mod will be generated in your Documents/Paradox Interactive/Hearts of Iron IV/mod folder.
-7.  Enable the new translation mod in the HOI4 Launcher.
-
----
-
-## 설치 및 사용법 (한국어)
+## 설치 및 사용법
 
 ### 필수 요구사항
 *   Git
@@ -107,8 +61,6 @@ python start.py
 6.  번역이 완료되면 `내 문서/Paradox Interactive/Hearts of Iron IV/mod` 폴더에 번역 모드가 생성됩니다.
 7.  HOI4 런처를 실행하고 새로 생성된 번역 모드를 활성화하여 게임을 실행하세요.
 
----
+## 라이선스
 
-## License
-
-This project is open source and available under the [GNU Affero General Public License v3.0](LICENSE).
+이 프로젝트는 오픈 소스이며 [GNU Affero General Public License v3.0](LICENSE) 하에 배포됩니다.
