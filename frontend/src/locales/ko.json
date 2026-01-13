@@ -1,0 +1,12 @@
+{
+    "app_title": "Paradox 로컬라이제이션 매니저",
+    "rescan_button": "재스캔",
+    "scanning_message": "창작마당 스캔 중...",
+    "version_label": "버전",
+    "image_placeholder": "이미지 없음",
+    "config_error": "설정을 불러오지 못했습니다",
+    "scan_error": "모드 스캔 실패",
+    "translate": "번역하기",
+    "status_idle": "대기 중",
+    "settings": "설정"
+}

@@ -1,0 +1,12 @@
+{
+    "app_title": "Paradox Localisation Manager",
+    "rescan_button": "Rescan",
+    "scanning_message": "Scanning Workshop...",
+    "version_label": "Ver",
+    "image_placeholder": "No Image",
+    "config_error": "Failed to fetch configuration",
+    "scan_error": "Failed to scan mods",
+    "translate": "Translate",
+    "status_idle": "Idle",
+    "settings": "Settings"
+}
