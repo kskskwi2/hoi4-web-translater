@@ -1,9 +1,41 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from backend.app.database import engine, get_db
+from backend.app import models
+
+
+def migrate_db():
+    try:
+        with engine.connect() as conn:
+            # Check if column exists
+            result = conn.execute(text("PRAGMA table_info(settings)"))
+            columns = [row[1] for row in result.fetchall()]
+
+            if "auto_shutdown" not in columns:
+                print("Migrating: Adding auto_shutdown to settings table")
+                conn.execute(
+                    text(
+                        "ALTER TABLE settings ADD COLUMN auto_shutdown BOOLEAN DEFAULT 0"
+                    )
+                )
+                conn.commit()
+                print("Migration successful")
+    except Exception as e:
+        print(f"Migration check failed: {e}")
+
 
 app = FastAPI(title="Paradox Localisation Manager")
+
+
+# Run migration on startup
+@app.on_event("startup")
+def startup_event():
+    migrate_db()
+
 
 # CORS setup for frontend dev
 app.add_middleware(
@@ -14,11 +46,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from backend.app.api import mods, images, translate
+from backend.app.api import mods, images, translate, paratranz
 
 app.include_router(mods.router, prefix="/api/mods", tags=["mods"])
 app.include_router(images.router, prefix="/api/images", tags=["images"])
 app.include_router(translate.router, prefix="/api/translate", tags=["translate"])
+app.include_router(paratranz.router, prefix="/api/paratranz", tags=["paratranz"])
+
+from backend.app.api import settings
+
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -41,7 +78,7 @@ def read_root():
 
 
 @app.get("/api/config")
-def get_default_paths():
+def get_default_paths(db: Session = Depends(get_db)):
     import ctypes.wintypes
     import pathlib
     import subprocess
@@ -91,13 +128,25 @@ def get_default_paths():
         )
 
     # Try to find Steam Workshop path
-    workshop_paths = [
-        r"C:\Program Files (x86)\Steam\steamapps\workshop\content\394360",
-        r"D:\SteamLibrary\steamapps\workshop\content\394360",
-        r"E:\SteamLibrary\steamapps\workshop\content\394360",
-        r"F:\SteamLibrary\steamapps\workshop\content\394360",
-        os.path.expanduser(r"~\SteamLibrary\steamapps\workshop\content\394360"),
-    ]
+    workshop_paths = []
+
+    # 0. Check DB Setting
+    try:
+        settings = db.query(models.Settings).first()
+        if settings and settings.steam_workshop_path:
+            workshop_paths.append(settings.steam_workshop_path)
+    except Exception as e:
+        print(f"Failed to fetch steam_workshop_path from DB: {e}")
+
+    workshop_paths.extend(
+        [
+            r"C:\Program Files (x86)\Steam\steamapps\workshop\content\394360",
+            r"D:\SteamLibrary\steamapps\workshop\content\394360",
+            r"E:\SteamLibrary\steamapps\workshop\content\394360",
+            r"F:\SteamLibrary\steamapps\workshop\content\394360",
+            os.path.expanduser(r"~\SteamLibrary\steamapps\workshop\content\394360"),
+        ]
+    )
 
     steam_workshop = ""
     for path in workshop_paths:

@@ -1,9 +1,13 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from ..services.mod_generator import ModGenerator
 from ..services.mod_scanner import ModScanner
+from ..services import task_manager
+from ..database import get_db
+from .. import models
 import os
 
 router = APIRouter()
@@ -32,6 +36,7 @@ class TranslateRequest(BaseModel):
     vanilla_path: Optional[str] = None
     settings: Optional[ServiceSettings] = None
     glossary: Optional[dict] = None  # Added Glossary
+    shutdown_when_complete: Optional[bool] = None  # Shutdown feature
 
 
 @router.get("/ollama/models")
@@ -46,11 +51,44 @@ async def get_ollama_models(base_url: str = "http://localhost:11434"):
     return {"models": models}
 
 
+@router.get("/gemini/models")
+async def get_gemini_models(
+    api_key: Optional[str] = None, db: Session = Depends(get_db)
+):
+    """
+    Fetches available Gemini models.
+    """
+    from ..services.translator.gemini import GeminiTranslatorService
+
+    if not api_key:
+        settings = db.query(models.Settings).first()
+        if settings:
+            api_key = settings.gemini_api_key
+
+    translator = GeminiTranslatorService(api_key=api_key)
+    models = await translator.get_available_models()
+    return {"models": models}
+
+
 @router.post("/run")
-async def run_translation(request: TranslateRequest, background_tasks: BackgroundTasks):
+async def run_translation(
+    request: TranslateRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Starts the translation process in the background.
     """
+    # Resolve shutdown preference
+    should_shutdown = False
+    if request.shutdown_when_complete is not None:
+        should_shutdown = request.shutdown_when_complete
+    else:
+        # Fallback to DB setting
+        db_settings = db.query(models.Settings).first()
+        if db_settings:
+            should_shutdown = db_settings.auto_shutdown or False
+
     mod_info = {
         "path": request.mod_path,
         "name": request.mod_name,
@@ -63,26 +101,28 @@ async def run_translation(request: TranslateRequest, background_tasks: Backgroun
     if request.settings:
         service_config = request.settings.model_dump()
 
-    # Reset progress
-    from ..services.mod_generator import translation_progress
-
-    translation_progress["status"] = "running"
-    translation_progress["percent"] = 0
-    translation_progress["processed_files"] = 0
+    # Create Task
+    task_id = task_manager.create_task()
 
     # Add to background tasks
     background_tasks.add_task(
         generator.generate_translation_mod,
-        mod_info,
-        request.output_path,
+        source_mod=mod_info,
+        output_root=request.output_path,
+        task_id=task_id,
         target_lang=request.target_lang,
         service=request.service,
         service_config=service_config,
         vanilla_path=request.vanilla_path,
-        glossary=request.glossary,  # Pass glossary
+        glossary=request.glossary,
+        shutdown_when_complete=should_shutdown,
     )
 
-    return {"status": "started", "message": "Translation started in background"}
+    return {
+        "status": "started",
+        "message": "Translation started in background",
+        "task_id": task_id,
+    }
 
 
 @router.get("/download/{mod_id}")
@@ -111,10 +151,21 @@ def create_zip_endpoint(path: str, name: str):
 
 
 @router.get("/status")
-def get_translation_status():
+def get_translation_status(task_id: str = None):
     """
     Returns the current translation progress.
     """
-    from ..services.mod_generator import translation_progress
+    if not task_id:
+        return {"status": "idle", "percent": 0, "processed_files": 0, "total_files": 0}
 
-    return translation_progress
+    task = task_manager.get_task(task_id)
+    if not task:
+        # Instead of 404 (which spams logs), return a special status
+        # This tells frontend "this task is gone", stop polling.
+        return {
+            "status": "not_found",
+            "percent": 0,
+            "error": "Task not found or expired",
+        }
+
+    return task

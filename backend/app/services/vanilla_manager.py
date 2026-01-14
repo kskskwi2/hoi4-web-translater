@@ -45,7 +45,9 @@ class VanillaManager:
         for root, _, files in os.walk(english_path):
             for file in files:
                 if file.endswith("l_english.yml"):
-                    base_name = file.replace("_l_english.yml", "")
+                    base_name = file.replace("l_english.yml", "")
+                    if base_name.endswith("_"):
+                        base_name = base_name[:-1]
                     file_path = os.path.join(root, file)
                     english_files[base_name] = self._parse_file(file_path)
 
@@ -54,7 +56,9 @@ class VanillaManager:
         for root, _, files in os.walk(target_path):
             for file in files:
                 if file.endswith(f"l_{self.target_lang}.yml"):
-                    base_name = file.replace(f"_l_{self.target_lang}.yml", "")
+                    base_name = file.replace(f"l_{self.target_lang}.yml", "")
+                    if base_name.endswith("_"):
+                        base_name = base_name[:-1]
 
                     if base_name in english_files:
                         target_data = self._parse_file(os.path.join(root, file))

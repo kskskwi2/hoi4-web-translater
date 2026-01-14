@@ -9,6 +9,8 @@ class ClaudeTranslatorService(BaseTranslator):
     Requires ANTHROPIC_API_KEY environment variable.
     """
 
+    SUPPORTS_NATIVE_GLOSSARY = True
+
     def __init__(
         self,
         model: str = "claude-3-5-sonnet-20241022",
@@ -38,12 +40,42 @@ class ClaudeTranslatorService(BaseTranslator):
             for k, v in self.glossary.items():
                 glossary_text += f"- {k}: {v}\n"
 
+        ho4_official_guide = (
+            "You are the Lead Korean Localizer for Paradox Interactive's 'Hearts of Iron IV'.\\n"
+            "Your mandate is to translate game text from English to Korean, STRICTLY following the official localization standards found in the game's `localisation/korean` folder.\\n\\n"
+            "***OFFICIAL HOI4 KOREAN STYLE GUIDE***\\n\\n"
+            "1. **Tone & Grammar (CRITICAL)**:\\n"
+            "   - **Narrative/Descriptions (Events, Lore)**: Use formal 'Hapsho-che' (합쇼체, ~습니다). It must sound like a 1940s military report, diplomatic cable, or historical record. Dry, serious, and professional.\\n"
+            "   - **Tooltips/Effects/Modifiers**: Use concise Noun Endings (~함, ~임, ~증가, ~감소). NEVER use full sentences here. (e.g., 'Gain 50 PP' -> '정치력 50 획득', not '획득합니다')\\n"
+            "   - **Interface/Buttons/Options**: Use concise Plain Form (해라체, ~다) or Noun Phrases.\\n\\n"
+            "2. **Mandatory Terminology (Do NOT deviate)**:\\n"
+            "   - Manpower -> 인력\\n"
+            "   - Stability -> 안정도\\n"
+            "   - War Support -> 전쟁 지지도\\n"
+            "   - Organization -> 조직력\\n"
+            "   - Division -> 사단 (Military Unit)\\n"
+            "   - Infrastructure -> 기반시설\\n"
+            "   - Factory -> 공장\\n"
+            "   - Equipment -> 장비\\n"
+            "   - Civilian Industry -> 민간 산업\\n"
+            "   - Army -> 육군 (Specific branch), 군 (General)\\n"
+            "   - Navy -> 해군\\n"
+            "   - Air force -> 공군\\n"
+            "   - Cheat -> 치트\\n"
+            "   - Buff -> 버프\\n"
+            "   - Debuff -> 디버프\\n"
+            "   - National Focus -> 국가 중점\\n\\n"
+            "3. **Formatting & Safety**:\\n"
+            "   - **PRESERVE** all special codes: §Y, §R, §G, §!, $VAR$, [Root.GetName], £icon£, \\n.\\n"
+            "   - **NO CHINESE CHARACTERS (Hanja)**: Use Korean Hangul ONLY unless the source is explicitly Chinese.\\n"
+            "   - **NO THINKING**: Do not output your thought process. Output ONLY the final translated text.\\n"
+            "   - **Keys**: If the input looks like a code key (e.g., `political_power_gain`), return it unchanged.\\n"
+        )
+
         system_instruction = (
-            f"Translate to {target}. RULES:\n"
-            "- Keep HoI4 variables/codes ($VAR$, §Y) intact.\n"
-            "- Use WW2 military/political tone.\n"
-            "- Output ONLY translation."
-            f"{glossary_text}"
+            f"{ho4_official_guide}\\n"
+            f"4. **Glossary (User Provided)**:\\n{glossary_text}\\n\\n"
+            f"Translate the following text to {target}:"
         )
 
         try:
@@ -64,7 +96,8 @@ class ClaudeTranslatorService(BaseTranslator):
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        return data["content"][0]["text"].strip()
+                        raw_text = data["content"][0]["text"]
+                        return self.clean_thinking_content(raw_text)
                     else:
                         error = await resp.text()
                         print(f"Claude error: {resp.status} - {error}")

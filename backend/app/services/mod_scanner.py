@@ -32,10 +32,18 @@ class ModScanner:
                 mod_id = entry.name
                 descriptor_path = os.path.join(entry.path, "descriptor.mod")
 
-                # Case-insensitive check for descriptor.mod
+                # 1. Check for standard 'descriptor.mod'
                 if not os.path.exists(descriptor_path):
-                    # Try uppercase or other variations if needed, but standard is lowercase
-                    pass
+                    # 2. Fallback: Check for ANY .mod file
+                    mod_files = glob.glob(os.path.join(entry.path, "*.mod"))
+                    if mod_files:
+                        descriptor_path = mod_files[0]  # Pick the first one found
+                        print(
+                            f"DEBUG: descriptor.mod not found, using {os.path.basename(descriptor_path)} instead."
+                        )
+                    else:
+                        # 3. Last Resort: Skip if absolutely no mod file
+                        continue
 
                 if os.path.exists(descriptor_path):
                     try:

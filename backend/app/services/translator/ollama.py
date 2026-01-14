@@ -9,6 +9,8 @@ class OllamaTranslatorService(BaseTranslator):
     Note: Ollama returns NDJSON streaming, we need to handle that.
     """
 
+    SUPPORTS_NATIVE_GLOSSARY = True
+
     def __init__(
         self,
         model: str = "gemma2",
@@ -41,12 +43,42 @@ class OllamaTranslatorService(BaseTranslator):
             for k, v in self.glossary.items():
                 glossary_text += f"- {k}: {v}\n"
 
+        ho4_official_guide = (
+            "You are the Lead Korean Localizer for Paradox Interactive's 'Hearts of Iron IV'.\\n"
+            "Your mandate is to translate game text from English to Korean, STRICTLY following the official localization standards found in the game's `localisation/korean` folder.\\n\\n"
+            "***OFFICIAL HOI4 KOREAN STYLE GUIDE***\\n\\n"
+            "1. **Tone & Grammar (CRITICAL)**:\\n"
+            "   - **Narrative/Descriptions (Events, Lore)**: Use formal 'Hapsho-che' (합쇼체, ~습니다). It must sound like a 1940s military report, diplomatic cable, or historical record. Dry, serious, and professional.\\n"
+            "   - **Tooltips/Effects/Modifiers**: Use concise Noun Endings (~함, ~임, ~증가, ~감소). NEVER use full sentences here. (e.g., 'Gain 50 PP' -> '정치력 50 획득', not '획득합니다')\\n"
+            "   - **Interface/Buttons/Options**: Use concise Plain Form (해라체, ~다) or Noun Phrases.\\n\\n"
+            "2. **Mandatory Terminology (Do NOT deviate)**:\\n"
+            "   - Manpower -> 인력\\n"
+            "   - Stability -> 안정도\\n"
+            "   - War Support -> 전쟁 지지도\\n"
+            "   - Organization -> 조직력\\n"
+            "   - Division -> 사단 (Military Unit)\\n"
+            "   - Infrastructure -> 기반시설\\n"
+            "   - Factory -> 공장\\n"
+            "   - Equipment -> 장비\\n"
+            "   - Civilian Industry -> 민간 산업\\n"
+            "   - Army -> 육군 (Specific branch), 군 (General)\\n"
+            "   - Navy -> 해군\\n"
+            "   - Air force -> 공군\\n"
+            "   - Cheat -> 치트\\n"
+            "   - Buff -> 버프\\n"
+            "   - Debuff -> 디버프\\n"
+            "   - National Focus -> 국가 중점\\n\\n"
+            "3. **Formatting & Safety**:\\n"
+            "   - **PRESERVE** all special codes: §Y, §R, §G, §!, $VAR$, [Root.GetName], £icon£, \\n.\\n"
+            "   - **NO CHINESE CHARACTERS (Hanja)**: Use Korean Hangul ONLY unless the source is explicitly Chinese.\\n"
+            "   - **NO THINKING**: Do not output your thought process. Output ONLY the final translated text.\\n"
+            "   - **Keys**: If the input looks like a code key (e.g., `political_power_gain`), return it unchanged.\\n"
+        )
+
         system_content = (
-            f"You are a professional Hearts of Iron IV mod translator. Translate the text to {target}.\n"
-            "RULES:\n"
-            "1. Output ONLY the translation. No 'Here is the translation' or notes.\n"
-            "2. Preserve HoI4 special codes ($VAR$, [Command], §Y...§!).\n"
-            f"{glossary_text}"
+            f"{ho4_official_guide}\\n"
+            f"4. **Glossary (User Provided)**:\\n{glossary_text}\\n\\n"
+            f"Translate the following text to {target}:"
         )
 
         messages = [
@@ -56,7 +88,15 @@ class OllamaTranslatorService(BaseTranslator):
 
         try:
             async with aiohttp.ClientSession() as session:
-                payload = {"model": self.model, "messages": messages, "stream": False}
+                payload = {
+                    "model": self.model,
+                    "messages": messages,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.1,  # Lower temperature to prevent hallucinations
+                        "num_predict": 2048,
+                    },
+                }
                 headers = {"Content-Type": "application/json"}
 
                 async with session.post(
@@ -70,11 +110,13 @@ class OllamaTranslatorService(BaseTranslator):
                         data = await resp.json(content_type=None)
 
                         # Ollama chat API response format
+                        result_text = text
                         if "message" in data:
-                            return data["message"]["content"].strip()
+                            result_text = data["message"]["content"]
                         elif "response" in data:
-                            return data["response"].strip()
-                        return text
+                            result_text = data["response"]
+
+                        return self.clean_thinking_content(result_text)
                     elif resp.status == 404:
                         print(
                             f"Ollama error: 404 (Model '{self.model}' not found? Try 'ollama pull {self.model}')"

@@ -49,10 +49,26 @@ class BaseTranslator(ABC):
         """
         Restores variables from placeholders.
         """
+        if text is None:
+            return ""
         result = text
         for placeholder, original, _ in extractions:
             result = result.replace(placeholder, original)
         return result
+
+    def clean_thinking_content(self, text: str) -> str:
+        """
+        Removes <think>...</think> blocks from the text.
+        Useful for reasoning models (like DeepSeek R1) that output their thought process.
+        """
+        if not text:
+            return text
+
+        # Remove <think>...</think> content (case insensitive, dotall)
+        # We use a non-greedy match .*? to avoid eating the whole string if multiple tags exist (unlikely but safe)
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+
+        return text.strip()
 
     @abstractmethod
     async def translate(self, text: str, target_lang: str) -> str:
@@ -87,6 +103,43 @@ class BaseTranslator(ABC):
 
         raise last_exception
 
+    def apply_glossary_as_variables(
+        self, text: str, glossary: dict
+    ) -> tuple[str, list]:
+        """
+        Replaces glossary keys in text with placeholders.
+        Returns (modified_text, list_of_extractions)
+        """
+        extractions = []
+        modified = text
+        placeholder_idx = 0
+
+        # Sort keys by length (descending) to avoid partial matching issues
+        sorted_keys = sorted(glossary.keys(), key=len, reverse=True)
+
+        for key in sorted_keys:
+            if not key or not key.strip():
+                continue
+
+            # Case-insensitive search
+            pattern = re.escape(key)
+            matches = list(re.finditer(pattern, modified, re.IGNORECASE))
+
+            for match in reversed(matches):
+                original_text_in_source = match.group(0)
+                target_val = glossary[key]
+
+                # Use a placeholder that AI is likely to preserve but distinct from VAR
+                placeholder = f"__GLS{placeholder_idx}__"
+                extractions.append((placeholder, target_val, "GLOSSARY"))
+
+                modified = (
+                    modified[: match.start()] + placeholder + modified[match.end() :]
+                )
+                placeholder_idx += 1
+
+        return modified, extractions
+
     async def translate_with_preservation(
         self, text: str, target_lang: str, glossary: dict = None
     ) -> str:
@@ -96,46 +149,31 @@ class BaseTranslator(ABC):
         if not text or text.strip() == "":
             return text
 
-        # Apply Glossary BEFORE translation (Substitutions)
-        # Note: This is aggressive substitution.
-        # Ideally, we should pass context, but strict replacement ensures consistency for made-up terms.
-        # We replace the term with a placeholder to prevent AI from re-translating it weirdly,
-        # OR we just rely on AI to translate the REST.
-        # Actually, for Glossary, we often want the AI to know the mapping.
-        # But `translate` signature doesn't support context yet.
-        # Let's do a simple substitution strategy:
-        # 1. Substitute Glossary Terms -> Target Terms (if they match the source language)
-        # BUT this is risky if the AI sees Korean in English text.
-        #
-        # Better Strategy:
-        # We'll attach the glossary to the instance temporarily or rely on system prompt injection in the service.
-        # Since `translate` is abstract, we can't easily change the signature for all subclasses without refactoring all.
-        #
-        # Workaround: Pre-pend glossary to the text for context? No, that messes up the output.
-        #
-        # BEST APPROACH: Modify the system prompt in the SERVICE classes using a member variable.
-        # The `ModGenerator` instantiates the service ONCE. We can set `service.glossary = glossary`.
+        # 1. Extract HOI4 Variables (Code preservation)
+        cleaned_text, var_extractions = self.extract_variables(text)
 
-        # Extract variables
-        cleaned_text, extractions = self.extract_variables(text)
+        # 2. Extract Glossary Terms (Term enforcement)
+        # Only apply strict variable replacement if the translator DOES NOT support native glossary context
+        glossary_extractions = []
+        supports_native_glossary = getattr(self, "SUPPORTS_NATIVE_GLOSSARY", False)
 
-        # Translate with Retry
+        if glossary and not supports_native_glossary:
+            cleaned_text, glossary_extractions = self.apply_glossary_as_variables(
+                cleaned_text, glossary
+            )
+
+        # 3. Translate with Retry
         try:
             translated = await self.translate_with_retry(cleaned_text, target_lang)
         except Exception:
             return text  # Fallback to original on total failure
 
-        # Restore variables
-        restored = self.restore_variables(translated, extractions)
+        # 4. Restore Glossary Terms (Inject Target Value)
+        # Note: We use restore_variables logic but with glossary list
+        if glossary_extractions:
+            translated = self.restore_variables(translated, glossary_extractions)
 
-        # Apply Glossary AFTER translation (Strict Enforcement)
-        # This handles cases where AI ignored the instruction OR explicitly fixes terms.
-        if glossary:
-            for term, replacement in glossary.items():
-                # This is tricky: we want to replace the TRANSLATED concept.
-                # But the glossary maps Source -> Target.
-                # So we can't search for 'Source' in 'Target' text.
-                # We need AI to do it.
-                pass
+        # 5. Restore HOI4 Variables (Inject Original Code)
+        restored = self.restore_variables(translated, var_extractions)
 
         return restored
