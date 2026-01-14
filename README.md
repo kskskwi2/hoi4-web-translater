@@ -66,7 +66,7 @@ chmod +x setup_mac_linux.sh run_mac_linux.sh
 
 1.  **모드 선택**: 앱을 켜면 자동으로 스캔된 모드 목록이 뜹니다. 번역하고 싶은 모드를 선택하세요.
 2.  **AI 서비스 선택**:
-    *   **Ollama**: 내 컴퓨터 성능을 사용 (무료, 개인 정보 보호). `Qwen2.5-7B` 모델을 강력 추천합니다.
+    *   **Ollama**: 내 컴퓨터 성능을 사용 (무료, 개인 정보 보호). `exaone3.5:7.8b` 모델을 강력 추천합니다.
     *   **OpenAI/Claude/Gemini**: API 키를 입력하여 사용 (유료, 고성능).
 3.  **번역 시작**: 설정(타겟 언어, 용어집 등)을 확인하고 'Start Translation'을 누르세요.
 4.  **적용**: 번역이 끝나면 `문서/Paradox Interactive/Hearts of Iron IV/mod` 폴더에 번역 모드가 생성됩니다. 게임 런처에서 해당 모드를 켜고 게임을 즐기세요.
