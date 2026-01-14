@@ -1,6 +1,6 @@
 # Paradox Localisation Manager (HOI4 웹 번역기)
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![React](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB.svg)
 
@@ -24,59 +24,43 @@
     *   비동기 병렬 처리로 초고속 번역
     *   ParaTranz(파라트랜즈) 연동으로 협업 번역 데이터 동기화
 
-## 🚀 설치 및 실행 방법
+## 🚀 초간편 설치 및 실행 (Windows)
+
+복잡한 명령어 없이 원클릭으로 설치하세요.
 
 ### 필수 요구사항
-*   [Python 3.12 이상](https://www.python.org/)
-*   [Node.js 18 이상](https://nodejs.org/) (프론트엔드 빌드 시 필요)
+*   [Python 3.10 이상](https://www.python.org/) (**설치 시 'Add Python to PATH' 체크 필수**)
+*   [Node.js 18 이상](https://nodejs.org/) (LTS 버전 추천)
 *   [Ollama](https://ollama.com/) (로컬 AI 사용 시 선택 사항)
 
 ### 1. 프로젝트 다운로드
 ```bash
-git clone https://github.com/yourusername/paradox-loc-manager.git
-cd paradox-loc-manager
+git clone https://github.com/kskskwi2/hoi4-web-translater.git
+cd hoi4-web-translater
 ```
 
-### 2. 백엔드(Backend) 설정
+### 2. 원클릭 설치
+폴더 안에 있는 **`setup_windows.bat`** 파일을 더블 클릭하세요.
+*   자동으로 가상환경을 만들고 필요한 라이브러리를 모두 설치합니다.
+*   프론트엔드(웹 화면)까지 자동으로 빌드합니다.
+
+### 3. 프로그램 실행
+설치가 끝나면 **`run_windows.bat`** 파일을 더블 클릭하세요.
+*   서버가 켜지고 잠시 후 브라우저가 자동으로 열립니다 (`http://localhost:8080`).
+
+---
+
+## 🐧 맥/리눅스 (Mac/Linux) 설치
+
+터미널을 열고 아래 명령어를 순서대로 입력하세요.
+
 ```bash
-cd backend
-python -m venv venv
-
-# 윈도우 (Windows)
-venv\Scripts\activate
-
-# 맥/리눅스 (Mac/Linux)
-source venv/bin/activate
-
-pip install -r requirements.txt
+chmod +x setup_mac_linux.sh run_mac_linux.sh
+./setup_mac_linux.sh  # 설치
+./run_mac_linux.sh    # 실행
 ```
 
-### 3. ParaTranz SDK 설치 (중요)
-이 프로젝트는 ParaTranz API 연동을 위해 별도의 SDK가 필요합니다.
-[ParaTranz API 문서](https://paratranz.cn/docs)를 참고하여 생성하거나, 아래 방법대로 진행하세요.
-
-1.  Java가 설치되어 있어야 합니다. (OpenAPI Generator 실행용)
-2.  프로젝트 루트에서 아래 명령어로 SDK를 생성합니다. (또는 미리 생성된 SDK 폴더를 구해서 넣으세요)
-    ```bash
-    # openapi-generator-cli가 필요합니다
-    openapi-generator-cli generate -i https://paratranz.cn/api/swagger.json -g python -o paratranz-sdk
-    ```
-3.  생성된 `paratranz-sdk` 폴더를 프로젝트 루트(또는 backend 폴더)에 위치시킵니다.
-
-### 4. 프론트엔드(Frontend) 설정
-```bash
-cd ../frontend
-npm install
-npm run build
-```
-
-### 5. 프로그램 실행
-프로젝트 최상위 폴더(`paradox-loc-manager`)로 돌아와서 실행 스크립트를 켭니다.
-```bash
-# 윈도우
-python start.py
-```
-브라우저 주소창에 `http://localhost:8080`을 입력하여 접속합니다.
+---
 
 ## 📖 사용 가이드
 
@@ -88,17 +72,12 @@ python start.py
 4.  **적용**: 번역이 끝나면 `문서/Paradox Interactive/Hearts of Iron IV/mod` 폴더에 번역 모드가 생성됩니다. 게임 런처에서 해당 모드를 켜고 게임을 즐기세요.
 
 ## 🤝 ParaTranz 연동 (협업 번역)
-혼자가 아니라 팀으로 번역하고 싶다면 파라트랜즈를 연동하세요.
-1.  [ParaTranz](https://paratranz.cn/)에서 프로젝트 생성.
-2.  내 프로필 설정에서 **API Token** 발급.
-3.  웹 인터페이스 설정 메뉴에 토큰 입력.
-4.  **업로드**: 원본 파일(`l_english`)을 파라트랜즈로 업로드.
-5.  **동기화**: 파라트랜즈에서 작업한 번역(`l_korean`)을 로컬로 내려받기.
+혼자가 아니라 팀으로 번역하고 싶다면 파라트랜즈를 연동하세요. (SDK 설치 필요)
 
-## ⚠️ 주의사항
-*   이 프로그램은 원본 모드 파일을 **절대 수정하지 않습니다**. 안전하게 별도의 모드를 만들어냅니다.
-*   Gemini API는 무료 티어 사용 시 분당 요청 제한(Rate Limit)이 있어 속도가 다소 느릴 수 있습니다.
-*   Ollama 사용 시 그래픽카드 메모리(VRAM) 8GB 이상을 권장합니다.
+1.  **SDK 준비**: [ParaTranz API 문서](https://paratranz.cn/docs)를 참고하여 `openapi-generator`로 SDK를 생성하거나, 미리 빌드된 `paratranz-sdk` 폴더를 프로젝트 폴더(`hoi4-web-translater`) 안에 넣으세요.
+2.  **설정**: 웹 설정 메뉴에서 API Token 입력.
+3.  **동기화**: 원본 파일 업로드 및 번역물 다운로드/동기화 가능.
 
-## 📄 라이선스
-MIT License
+## 📄 라이선스 (License)
+**GNU Affero General Public License v3.0 (AGPL-3.0)**
+이 소프트웨어를 네트워크를 통해 서비스하는 경우, 전체 소스 코드를 공개해야 합니다.
